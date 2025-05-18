@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录注册系统测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        h2 {
+            color: #333;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .error {
+            color: red;
+            margin: 10px 0;
+        }
+        .success {
+            color: green;
+            margin: 10px 0;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group small {
+            display: block;
+            color: #888;
+            margin-top: 5px;
+            font-size: 0.8em;
+        }
+        .profile {
+            display: none;
+        }
+        .nav-button {
+            margin-top: 20px;
+            background-color: #008CBA;
+        }
+        .logout-button {
+            background-color: #f44336;
+        }
+        .message {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .input-error {
+            border-color: #ff0000;
+        }
+    </style>
+</head>
+<body>
+    <h1>登录注册系统测试</h1>
+    
+    <!-- 注册表单 -->
+    <div class="container" id="register-container">
+        <h2>用户注册</h2>
+        <div id="register-error" class="error"></div>
+        <div id="register-success" class="success"></div>
+        
+        <form id="register-form" novalidate>
+            <div class="form-group">
+                <label for="register-username">用户名</label>
+                <input type="text" id="register-username" placeholder="请输入用户名" required>
+                <small>用户名只能包含字母、数字和下划线，长度在3-20个字符之间</small>
+                <div class="error" id="username-error"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="register-email">邮箱</label>
+                <input type="email" id="register-email" placeholder="请输入邮箱" required>
+                <small>请输入有效的电子邮箱地址</small>
+                <div class="error" id="email-error"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="register-password">密码</label>
+                <input type="password" id="register-password" placeholder="请输入密码" required>
+                <small>密码长度至少为6个字符</small>
+                <div class="error" id="password-error"></div>
+            </div>
+            
+            <button type="submit" id="register-button">注册</button>
+        </form>
+        <button class="nav-button" id="to-login-button">去登录</button>
+    </div>
+    
+    <!-- 登录表单 -->
+    <div class="container" id="login-container" style="display: none;">
+        <h2>用户登录</h2>
+        <div id="login-error" class="error"></div>
+        <div id="login-success" class="success"></div>
+        
+        <form id="login-form" novalidate>
+            <div class="form-group">
+                <label for="login-username">用户名</label>
+                <input type="text" id="login-username" placeholder="请输入用户名" required>
+                <div class="error" id="login-username-error"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="login-password">密码</label>
+                <input type="password" id="login-password" placeholder="请输入密码" required>
+                <div class="error" id="login-password-error"></div>
+            </div>
+            
+            <button type="submit" id="login-button">登录</button>
+        </form>
+        <button class="nav-button" id="to-register-button">去注册</button>
+    </div>
+    
+    <!-- 个人资料 -->
+    <div class="container profile" id="profile-container">
+        <h2>个人资料</h2>
+        <div id="profile-error" class="error"></div>
+        
+        <div id="profile-info">
+            <p><strong>用户ID:</strong> <span id="user-id"></span></p>
+            <p><strong>用户名:</strong> <span id="user-username"></span></p>
+            <p><strong>邮箱:</strong> <span id="user-email"></span></p>
+        </div>
+        
+        <button class="logout-button" id="logout-button">退出登录</button>
+    </div>
+    
+    <script>
+        const API_BASE_URL = 'http://localhost:8000/api';
+        
+        // DOM元素
+        const registerContainer = document.getElementById('register-container');
+        const loginContainer = document.getElementById('login-container');
+        const profileContainer = document.getElementById('profile-container');
+        
+        // 表单验证正则表达式
+        const patterns = {
+            username: /^[a-zA-Z0-9_]{3,20}$/,
+            email: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+            password: /^.{6,}$/
+        };
+        
+        // 表单验证函数
+        function validateInput(input, pattern, errorElement) {
+            const value = input.value.trim();
+            const isValid = pattern.test(value);
+            
+            if (value === "") {
+                errorElement.textContent = "此字段不能为空";
+                input.classList.add('input-error');
+                return false;
+            } else if (!isValid) {
+                errorElement.textContent = "格式不正确";
+                input.classList.add('input-error');
+                return false;
+            } else {
+                errorElement.textContent = "";
+                input.classList.remove('input-error');
+                return true;
+            }
+        }
+        
+        // 注册表单验证
+        const registerForm = document.getElementById('register-form');
+        const usernameInput = document.getElementById('register-username');
+        const emailInput = document.getElementById('register-email');
+        const passwordInput = document.getElementById('register-password');
+        
+        usernameInput.addEventListener('blur', () => {
+            validateInput(usernameInput, patterns.username, document.getElementById('username-error'));
+        });
+        
+        emailInput.addEventListener('blur', () => {
+            validateInput(emailInput, patterns.email, document.getElementById('email-error'));
+        });
+        
+        passwordInput.addEventListener('blur', () => {
+            validateInput(passwordInput, patterns.password, document.getElementById('password-error'));
+        });
+        
+        // 登录表单验证
+        const loginForm = document.getElementById('login-form');
+        const loginUsernameInput = document.getElementById('login-username');
+        const loginPasswordInput = document.getElementById('login-password');
+        
+        loginUsernameInput.addEventListener('blur', () => {
+            if (loginUsernameInput.value.trim() === "") {
+                document.getElementById('login-username-error').textContent = "用户名不能为空";
+                loginUsernameInput.classList.add('input-error');
+            } else {
+                document.getElementById('login-username-error').textContent = "";
+                loginUsernameInput.classList.remove('input-error');
+            }
+        });
+        
+        loginPasswordInput.addEventListener('blur', () => {
+            if (loginPasswordInput.value.trim() === "") {
+                document.getElementById('login-password-error').textContent = "密码不能为空";
+                loginPasswordInput.classList.add('input-error');
+            } else {
+                document.getElementById('login-password-error').textContent = "";
+                loginPasswordInput.classList.remove('input-error');
+            }
+        });
+        
+        // 导航按钮
+        document.getElementById('to-login-button').addEventListener('click', () => {
+            registerContainer.style.display = 'none';
+            loginContainer.style.display = 'block';
+        });
+        
+        document.getElementById('to-register-button').addEventListener('click', () => {
+            loginContainer.style.display = 'none';
+            registerContainer.style.display = 'block';
+        });
+        
+        // 检查是否已登录
+        function checkAuth() {
+            const token = localStorage.getItem('token');
+            if (token) {
+                registerContainer.style.display = 'none';
+                loginContainer.style.display = 'none';
+                profileContainer.style.display = 'block';
+                getUserProfile();
+            }
+        }
+        
+        // 用户注册
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // 清除之前的消息
+            document.getElementById('register-error').textContent = '';
+            document.getElementById('register-success').textContent = '';
+            
+            // 验证所有字段
+            const isUsernameValid = validateInput(usernameInput, patterns.username, document.getElementById('username-error'));
+            const isEmailValid = validateInput(emailInput, patterns.email, document.getElementById('email-error'));
+            const isPasswordValid = validateInput(passwordInput, patterns.password, document.getElementById('password-error'));
+            
+            if (!isUsernameValid || !isEmailValid || !isPasswordValid) {
+                return;
+            }
+            
+            const username = usernameInput.value.trim();
+            const email = emailInput.value.trim();
+            const password = passwordInput.value.trim();
+            
+            // 打印要发送的数据（调试用）
+            console.log('发送的数据:', { username, email, password });
+            
+            // 发送注册请求
+            try {
+                const response = await fetch(`${API_BASE_URL}/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, email, password }),
+                });
+                
+                const data = await response.json();
+                console.log('服务器响应:', data); // 打印响应数据
+                
+                if (!response.ok) {
+                    document.getElementById('register-error').textContent = data.error || '注册失败';
+                    return;
+                }
+                
+                document.getElementById('register-success').textContent = data.message || '注册成功';
+                registerForm.reset();
+                
+                setTimeout(() => {
+                    registerContainer.style.display = 'none';
+                    loginContainer.style.display = 'block';
+                }, 1500);
+            } catch (error) {
+                document.getElementById('register-error').textContent = '网络错误，请稍后重试';
+                console.error('注册错误:', error);
+            }
+        });
+        
+        // 用户登录
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // 清除之前的消息
+            document.getElementById('login-error').textContent = '';
+            document.getElementById('login-success').textContent = '';
+            
+            const username = loginUsernameInput.value.trim();
+            const password = loginPasswordInput.value.trim();
+            
+            if (!username) {
+                document.getElementById('login-username-error').textContent = '请输入用户名';
+                return;
+            }
+            
+            if (!password) {
+                document.getElementById('login-password-error').textContent = '请输入密码';
+                return;
+            }
+            
+            // 发送登录请求
+            try {
+                const response = await fetch(`${API_BASE_URL}/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password }),
+                });
+                
+                const data = await response.json();
+                console.log('登录响应:', data); // 打印响应数据
+                
+                if (!response.ok) {
+                    document.getElementById('login-error').textContent = data.error || '登录失败';
+                    return;
+                }
+                
+                document.getElementById('login-success').textContent = data.message || '登录成功';
+                
+                // 保存用户信息和token
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('user', JSON.stringify(data.user));
+                
+                // 显示个人资料页
+                setTimeout(() => {
+                    loginForm.reset();
+                    loginContainer.style.display = 'none';
+                    profileContainer.style.display = 'block';
+                    
+                    // 显示用户信息
+                    document.getElementById('user-id').textContent = data.user.id;
+                    document.getElementById('user-username').textContent = data.user.username;
+                    document.getElementById('user-email').textContent = data.user.email;
+                }, 1000);
+            } catch (error) {
+                document.getElementById('login-error').textContent = '网络错误，请稍后重试';
+                console.error('登录错误:', error);
+            }
+        });
+        
+        // 获取用户资料
+        async function getUserProfile() {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/user/profile`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': token,
+                    },
+                });
+                
+                const data = await response.json();
+                console.log('获取资料响应:', data); // 打印响应数据
+                
+                if (!response.ok) {
+                    document.getElementById('profile-error').textContent = data.error || '获取资料失败';
+                    // 如果是401错误，退出登录
+                    if (response.status === 401) {
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('user');
+                        profileContainer.style.display = 'none';
+                        loginContainer.style.display = 'block';
+                    }
+                    return;
+                }
+                
+                // 显示用户信息
+                document.getElementById('user-id').textContent = data.user.id;
+                document.getElementById('user-username').textContent = data.user.username;
+                document.getElementById('user-email').textContent = data.user.email;
+            } catch (error) {
+                document.getElementById('profile-error').textContent = '网络错误，请稍后重试';
+                console.error('获取资料错误:', error);
+            }
+        }
+        
+        // 退出登录
+        document.getElementById('logout-button').addEventListener('click', () => {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            
+            profileContainer.style.display = 'none';
+            loginContainer.style.display = 'block';
+        });
+        
+        // 页面加载时检查认证状态
+        checkAuth();
+    </script>
+</body>
+</html>
